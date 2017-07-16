@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"fmt"
 	"time"
@@ -72,8 +74,15 @@ func aggregate(groupBy []string, interval string) map[string]int {
 }
 
 func groupKey(groupBy []string, interval string, data map[string]interface{}) (key string) {
+	var keys []string
+
+	for _, g := range groupBy {
+		keys = append(keys, data[g].(string))
+	}
+
 	var timeKey string
 	time := data["StartDateTime"].(time.Time)
+
 	switch interval {
 	case "daily":
 		timeKey = fmt.Sprintf("%d-%d-%d", time.Year(), time.Month(), time.Day())
@@ -81,37 +90,31 @@ func groupKey(groupBy []string, interval string, data map[string]interface{}) (k
 		timeKey = fmt.Sprintf("%d-%d", time.Year(), time.Month())
 	}
 
-	for _, g := range groupBy {
-		key = fmt.Sprintf("%s_%s_", key, data[g])
-	}
+	keys = append(keys, timeKey)
+	key = strings.Join(keys, ",")
+	return
+}
 
-	key = fmt.Sprintf("%s_%s_", key, timeKey)
+func formatResult(results map[string]int) (out map[string]interface{}) {
+	for k, v := range results {
+		var keys = strings.Split(k, ",")
+		for _, key := range keys {
+			out[key] = v
+		}
+	}
 	return
 }
 
 func mockData() (data []map[string]interface{}) {
-	for i := 0; i < 100000; i++ {
-		data = append(data, map[string]interface{}{
-			"LicenseId":       "license1",
-			"BilledProductId": "product1",
-			"StartDateTime":   time.Now().AddDate(0, 0, i%365),
-			"Value":           1,
-		})
-
-		data = append(data, map[string]interface{}{
-			"LicenseId":       "license1",
-			"BilledProductId": "product2",
-			"StartDateTime":   time.Now().AddDate(0, 0, i%365),
-			"Value":           1,
-		})
-
-		data = append(data, map[string]interface{}{
-			"LicenseId":       "license1",
-			"BilledProductId": "product3",
-			"StartDateTime":   time.Now().AddDate(0, 0, i%365),
-			"Value":           1,
-		})
+	for i := 0; i < 3; i++ {
+		for j := 0; j < 2; j++ {
+			data = append(data, map[string]interface{}{
+				"LicenseId":       "license1",
+				"BilledProductId": "product" + strconv.Itoa(j),
+				"StartDateTime":   time.Now().AddDate(0, 0, -i),
+				"Value":           1,
+			})
+		}
 	}
-
 	return
 }
