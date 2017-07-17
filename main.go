@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"log"
+	"math/rand"
 	"net/http"
 	"strconv"
 	"strings"
@@ -54,7 +55,7 @@ func aggregateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func aggregate(groupBy []string, interval string) []map[string]interface{} {
-	result := []map[string]interface{}{}
+	aggrOut := make(chan map[string]interface{})
 	f := flow.New().Source(func(out chan map[string]interface{}) {
 		for _, d := range mockData() {
 			out <- d
@@ -82,12 +83,16 @@ func aggregate(groupBy []string, interval string) []map[string]interface{} {
 		}
 		// { date, group1, group2, ... }
 		return flatten
-	}).Map(func(item map[string]interface{}) {
-		result = append(result, item)
-	})
+	}).AddOutput(aggrOut)
 
 	flow.Ready()
-	f.Run()
+	go f.Run()
+
+	result := []map[string]interface{}{}
+	for item := range aggrOut {
+		result = append(result, item)
+	}
+
 	return result
 }
 
@@ -97,40 +102,31 @@ func groupKey(groupBy []string, interval string, data map[string]interface{}) (k
 	for _, g := range groupBy {
 		keys = append(keys, data[g].(string))
 	}
-
-	var timeKey string
 	time := data["StartDateTime"].(time.Time)
-
-	switch interval {
-	case "daily":
-		timeKey = fmt.Sprintf("%d-%d-%d", time.Year(), time.Month(), time.Day())
-	case "monthly":
-		timeKey = fmt.Sprintf("%d-%d", time.Year(), time.Month())
-	}
-
-	keys = append(keys, timeKey)
+	keys = append(keys, fromInterval(time, interval))
 	key = strings.Join(keys, ",")
 	return
 }
 
-func formatResult(results map[string]int) (out map[string]interface{}) {
-	for k, v := range results {
-		var keys = strings.Split(k, ",")
-		for _, key := range keys {
-			out[key] = v
-		}
+func fromInterval(t time.Time, interval string) string {
+	var timeKey string
+	switch interval {
+	case "daily":
+		timeKey = fmt.Sprintf("%d-%d-%d", t.Year(), t.Month(), t.Day())
+	case "monthly":
+		timeKey = fmt.Sprintf("%d-%d", t.Year(), t.Month())
 	}
-	return
+	return timeKey
 }
 
 func mockData() (data []map[string]interface{}) {
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 365; i++ {
 		for j := 0; j < 2; j++ {
 			data = append(data, map[string]interface{}{
 				"LicenseId":       "license1",
 				"BilledProductId": "product" + strconv.Itoa(j),
 				"StartDateTime":   time.Now().AddDate(0, 0, -i),
-				"Value":           1,
+				"Value":           rand.Intn(100),
 			})
 		}
 	}
