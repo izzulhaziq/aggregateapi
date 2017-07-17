@@ -4,4 +4,7 @@ go:
   - master
   
 script:
- - GOOS=windows go build
+ - GOOS=windows go build ./...
+
+addons:
+  artifacts: true
