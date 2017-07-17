@@ -1,0 +1,7 @@
+# Build customization
+builds:
+  - binary: aggregate-api
+    goos:
+      - windows
+    goarch:
+      - amd64
