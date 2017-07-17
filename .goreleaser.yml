@@ -1,7 +1,7 @@
-repo: goreleaser/releaser
-binary_name: release
-brew:
-  repo: goreleaser/homebrew-formulae
-build:
-  oses:
-    - windows
+# Build customization
+builds:
+  - binary: aggregate-api
+    goos:
+      - windows
+    goarch:
+      - amd64
