@@ -1,7 +1,18 @@
 # Build customization
 builds:
-  - binary: aggregate-api
-    goos:
-      - windows
-    goarch:
-      - amd64
+ - main: main.go
+   binary: aggregate-api
+   goos:
+     - windows
+     - darwin
+     - linux
+   goarch:
+     - amd64
+archive:
+  format: tar.gz
+  replacements:
+    amd64: 64-bit
+    darwin: macOS
+    linux: Tux
+  files:
+    - LICENSE
