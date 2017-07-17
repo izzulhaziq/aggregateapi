@@ -53,8 +53,8 @@ func aggregateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func aggregate(groupBy []string, interval string) map[string]interface{} {
-	result := map[string]interface{}{}
+func aggregate(groupBy []string, interval string) []map[string]interface{} {
+	result := []map[string]interface{}{}
 	f := flow.New().Source(func(out chan map[string]interface{}) {
 		for _, d := range mockData() {
 			out <- d
@@ -67,17 +67,23 @@ func aggregate(groupBy []string, interval string) map[string]interface{} {
 	}).Map(func(group string, count int) flow.KeyValue {
 		k := strings.Split(group, ",")
 		v := map[string]int{
-			group: count,
+			strings.Join(k[:len(k)-1], "-"): count,
 		}
-		return flow.KeyValue{Key: strings.Join(k[:len(k)-1], ","), Value: v}
-	}).GroupByKey().Map(func(group string, c []map[string]int) flow.KeyValue {
-		k := strings.Split(group, ",")
-		v := map[string]interface{}{
-			group: c,
+		// key = date, value = [group]
+		return flow.KeyValue{Key: k[len(k)-1], Value: v}
+	}).GroupByKey().Map(func(group string, values []map[string]int) map[string]interface{} {
+		flatten := map[string]interface{}{
+			"date": group,
 		}
-		return flow.KeyValue{Key: strings.Join(k[:len(k)-1], ","), Value: v}
-	}).GroupByKey().Map(func(group string, c []map[string]interface{}) {
-		result[group] = c
+		for _, item := range values {
+			for k, v := range item {
+				flatten[k] = v
+			}
+		}
+		// { date, group1, group2, ... }
+		return flatten
+	}).Map(func(item map[string]interface{}) {
+		result = append(result, item)
 	})
 
 	flow.Ready()
