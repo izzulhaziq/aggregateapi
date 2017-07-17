@@ -53,8 +53,8 @@ func aggregateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func aggregate(groupBy []string, interval string) map[string]int {
-	result := map[string]int{}
+func aggregate(groupBy []string, interval string) map[string]interface{} {
+	result := map[string]interface{}{}
 	f := flow.New().Source(func(out chan map[string]interface{}) {
 		for _, d := range mockData() {
 			out <- d
@@ -64,8 +64,20 @@ func aggregate(groupBy []string, interval string) map[string]int {
 		return flow.KeyValue{Key: key, Value: data["Value"].(int)}
 	}).ReduceByKey(func(x int, y int) int {
 		return x + y
-	}).Map(func(group string, count int) {
-		result[group] = count
+	}).Map(func(group string, count int) flow.KeyValue {
+		k := strings.Split(group, ",")
+		v := map[string]int{
+			group: count,
+		}
+		return flow.KeyValue{Key: strings.Join(k[:len(k)-1], ","), Value: v}
+	}).GroupByKey().Map(func(group string, c []map[string]int) flow.KeyValue {
+		k := strings.Split(group, ",")
+		v := map[string]interface{}{
+			group: c,
+		}
+		return flow.KeyValue{Key: strings.Join(k[:len(k)-1], ","), Value: v}
+	}).GroupByKey().Map(func(group string, c []map[string]interface{}) {
+		result[group] = c
 	})
 
 	flow.Ready()
