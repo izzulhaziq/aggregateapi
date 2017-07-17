@@ -3,6 +3,6 @@ language: go
 go:
   - master
 
-all:
+script:
     GOOS=windows GOARCH=386 go build -o aggregateapi.exe
     zip localserver-win32.zip aggregateapi.exe
