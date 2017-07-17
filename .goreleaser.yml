@@ -5,5 +5,3 @@ brew:
 build:
   oses:
     - windows
-    - darwin
-    - linux
