@@ -2,9 +2,7 @@ language: go
 
 go:
   - master
-  
-script:
- - GOOS=windows go build ./...
 
-addons:
-  artifacts: true
+all:
+    GOOS=windows GOARCH=386 go build -o aggregateapi.exe
+    zip localserver-win32.zip aggregateapi.exe
