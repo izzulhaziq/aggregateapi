@@ -71,7 +71,7 @@ func aggregate(groupBy []string, interval string) <-chan map[string]interface{} 
 	}).Map(func(group string, count int) flow.KeyValue {
 		k := strings.Split(group, ",")
 		v := map[string]int{
-			strings.Join(k[:len(k)-1], "-"): count,
+			strings.Join(k[:len(k)-1], ","): count,
 		}
 		// key = date, value = [group]
 		return flow.KeyValue{Key: k[len(k)-1], Value: v}
