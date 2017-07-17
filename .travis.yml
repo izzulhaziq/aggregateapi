@@ -3,6 +3,5 @@ language: go
 go:
   - master
 
-script:
-    GOOS=windows GOARCH=386 go build -o aggregateapi.exe
-    zip localserver-win32.zip aggregateapi.exe
+after_success:
+  test -n "$TRAVIS_TAG" && curl -s https://raw.githubusercontent.com/goreleaser/get/master/latest | bash
