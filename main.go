@@ -38,7 +38,10 @@ func aggregateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	results := aggregate(param.GroupBy, param.Interval)
+	results := []map[string]interface{}{}
+	for item := range aggregate(param.GroupBy, param.Interval) {
+		results = append(results, item)
+	}
 
 	result := map[string]interface{}{}
 	groupByKey := fmt.Sprintf("groupby_%s", param.GroupBy)
@@ -54,7 +57,7 @@ func aggregateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func aggregate(groupBy []string, interval string) []map[string]interface{} {
+func aggregate(groupBy []string, interval string) <-chan map[string]interface{} {
 	aggrOut := make(chan map[string]interface{})
 	f := flow.New().Source(func(out chan map[string]interface{}) {
 		for _, d := range mockData() {
@@ -88,12 +91,7 @@ func aggregate(groupBy []string, interval string) []map[string]interface{} {
 	flow.Ready()
 	go f.Run()
 
-	result := []map[string]interface{}{}
-	for item := range aggrOut {
-		result = append(result, item)
-	}
-
-	return result
+	return aggrOut
 }
 
 func groupKey(groupBy []string, interval string, data map[string]interface{}) (key string) {
