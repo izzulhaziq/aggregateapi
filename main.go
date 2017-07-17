@@ -58,6 +58,7 @@ func aggregateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func aggregate(groupBy []string, interval string) <-chan map[string]interface{} {
+	// TODO: changed this to re-use flow. Possible memory leak if otherwise.
 	aggrOut := make(chan map[string]interface{})
 	f := flow.New().Source(func(out chan map[string]interface{}) {
 		for _, d := range mockData() {
@@ -96,10 +97,10 @@ func aggregate(groupBy []string, interval string) <-chan map[string]interface{} 
 
 func groupKey(groupBy []string, interval string, data map[string]interface{}) (key string) {
 	var keys []string
-
 	for _, g := range groupBy {
 		keys = append(keys, data[g].(string))
 	}
+
 	time := data["StartDateTime"].(time.Time)
 	keys = append(keys, fromInterval(time, interval))
 	key = strings.Join(keys, ",")
