@@ -5,6 +5,8 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
+	"os/signal"
 	"strconv"
 	"strings"
 
@@ -21,11 +23,42 @@ type aggrParam struct {
 }
 
 func main() {
-	mux := bone.New()
-	mux.Post("/aggregate", http.HandlerFunc(aggregateHandler))
+	fmt.Println("Starting HTTP server")
 	flow.Ready()
 
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	server := startHTTPServer()
+	waitForStopSignal(server)
+
+	fmt.Println("HTTP server has shutdown gracefully")
+	fmt.Println(len(flow.Contexts))
+}
+
+func waitForStopSignal(server *http.Server) {
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt)
+
+	<-stop
+	if err := server.Shutdown(nil); err != nil {
+		panic(err) // failure/timeout shutting down the server gracefully
+	}
+}
+
+func startHTTPServer() *http.Server {
+	mux := bone.New()
+	mux.Post("/aggregate", http.HandlerFunc(aggregateHandler))
+
+	srv := &http.Server{
+		Addr:    ":8080",
+		Handler: mux,
+	}
+
+	go func() {
+		if err := srv.ListenAndServe(); err != nil {
+			// cannot panic, because this probably is an intentional close
+			log.Printf("Httpserver: ListenAndServe() error: %s", err)
+		}
+	}()
+	return srv
 }
 
 func aggregateHandler(w http.ResponseWriter, r *http.Request) {
