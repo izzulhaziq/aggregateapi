@@ -27,20 +27,19 @@ func main() {
 	flow.Ready()
 
 	server := startHTTPServer()
-	waitForStopSignal(server)
+	waitForStopSignal()
+	if err := server.Shutdown(nil); err != nil {
+		panic(err) // failure/timeout shutting down the server gracefully
+	}
 
 	fmt.Println("HTTP server has shutdown gracefully")
-	fmt.Println(len(flow.Contexts))
 }
 
-func waitForStopSignal(server *http.Server) {
+func waitForStopSignal() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
 
 	<-stop
-	if err := server.Shutdown(nil); err != nil {
-		panic(err) // failure/timeout shutting down the server gracefully
-	}
 }
 
 func startHTTPServer() *http.Server {
