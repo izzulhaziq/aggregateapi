@@ -11,8 +11,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/chrislusf/glow/flow"
 	"github.com/go-zoo/bone"
+	"github.com/izzulhaziq/glow/flow"
 )
 
 type aggrParam struct {
@@ -23,6 +23,7 @@ type aggrParam struct {
 func main() {
 	mux := bone.New()
 	mux.Post("/aggregate", http.HandlerFunc(aggregateHandler))
+	flow.Ready()
 
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }
@@ -38,8 +39,11 @@ func aggregateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	aggrOut := aggregate(param.GroupBy, param.Interval)
+	defer closeFlow()
+
 	results := []map[string]interface{}{}
-	for item := range aggregate(param.GroupBy, param.Interval) {
+	for item := range aggrOut {
 		results = append(results, item)
 	}
 
@@ -58,7 +62,6 @@ func aggregateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func aggregate(groupBy []string, interval string) <-chan map[string]interface{} {
-	// TODO: changed this to re-use flow. Possible memory leak if otherwise.
 	aggrOut := make(chan map[string]interface{})
 	f := flow.New().Source(func(out chan map[string]interface{}) {
 		for _, d := range mockData() {
@@ -89,10 +92,14 @@ func aggregate(groupBy []string, interval string) <-chan map[string]interface{} 
 		return flatten
 	}).AddOutput(aggrOut)
 
-	flow.Ready()
 	go f.Run()
-
 	return aggrOut
+}
+
+func closeFlow() {
+	copy(flow.Contexts[0:], flow.Contexts[1:])
+	flow.Contexts[len(flow.Contexts)-1] = nil
+	flow.Contexts = flow.Contexts[:len(flow.Contexts)-1]
 }
 
 func groupKey(groupBy []string, interval string, data map[string]interface{}) (key string) {
@@ -111,9 +118,9 @@ func fromInterval(t time.Time, interval string) string {
 	var timeKey string
 	switch interval {
 	case "daily":
-		timeKey = fmt.Sprintf("%d-%d-%d", t.Year(), t.Month(), t.Day())
+		timeKey = fmt.Sprintf("%d-%0d-%0d", t.Year(), t.Month(), t.Day())
 	case "monthly":
-		timeKey = fmt.Sprintf("%d-%d", t.Year(), t.Month())
+		timeKey = fmt.Sprintf("%d-%0d", t.Year(), t.Month())
 	}
 	return timeKey
 }
