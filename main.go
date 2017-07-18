@@ -118,9 +118,9 @@ func fromInterval(t time.Time, interval string) string {
 	var timeKey string
 	switch interval {
 	case "daily":
-		timeKey = fmt.Sprintf("%d-%0d-%0d", t.Year(), t.Month(), t.Day())
+		timeKey = fmt.Sprintf("%04d-%02d-%02d", t.Year(), t.Month(), t.Day())
 	case "monthly":
-		timeKey = fmt.Sprintf("%d-%0d", t.Year(), t.Month())
+		timeKey = fmt.Sprintf("%04d-%02d", t.Year(), t.Month())
 	}
 	return timeKey
 }
