@@ -1,10 +1,10 @@
 # Build customization
 builds:
- - main: main.go
-   binary: aggregate-api
+ - binary: aggregate-api
    goos:
      - windows
      - darwin
+     - linux
    goarch:
      - amd64
 archive:
