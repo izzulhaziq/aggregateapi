@@ -5,18 +5,24 @@ import (
 	"strings"
 	"time"
 
+	"strconv"
+
 	"github.com/izzulhaziq/glow/flow"
 )
 
-func aggregate(groupBy []string, interval string) <-chan map[string]interface{} {
+func aggregate(param aggrParam) <-chan map[string]interface{} {
 	aggrOut := make(chan map[string]interface{})
 	f := flow.New().Source(func(out chan map[string]interface{}) {
-		for _, d := range mockData() {
-			out <- d
+		if err := cfg.src.read(out); err != nil {
+			panic(err)
 		}
 	}, 5).Map(func(data map[string]interface{}) flow.KeyValue {
-		key := groupKey(groupBy, interval, data)
-		return flow.KeyValue{Key: key, Value: data["Value"].(int)}
+		key := groupKey(param.GroupBy, param.Interval, data)
+		val, ok := data[param.AggregatedField].(int)
+		if !ok {
+			val, _ = strconv.Atoi(data[param.AggregatedField].(string))
+		}
+		return flow.KeyValue{Key: key, Value: val}
 	}).ReduceByKey(func(x int, y int) int {
 		return x + y
 	}).Map(func(group string, count int) flow.KeyValue {
@@ -55,8 +61,16 @@ func groupKey(groupBy []string, interval string, data map[string]interface{}) (k
 		keys = append(keys, data[g].(string))
 	}
 
-	time := data["StartDateTime"].(time.Time)
-	keys = append(keys, fromInterval(time, interval))
+	t, ok := data[cfg.dateKey].(time.Time)
+	if !ok {
+		parsed, err := time.Parse(cfg.dateFormat, data[cfg.dateKey].(string))
+		if err != nil {
+			panic(err)
+		}
+		t = parsed
+	}
+
+	keys = append(keys, fromInterval(t, interval))
 	key = strings.Join(keys, ",")
 	return
 }

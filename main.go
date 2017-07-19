@@ -12,17 +12,35 @@ import (
 	"fmt"
 	"time"
 
+	"flag"
+
 	"github.com/go-zoo/bone"
 	"github.com/izzulhaziq/glow/flow"
 	"github.com/rs/cors"
 )
 
-type aggrParam struct {
-	GroupBy  []string `json:"groupBy"`
-	Interval string   `json:"interval"`
+type config struct {
+	src        source
+	dateKey    string
+	dateFormat string
 }
 
+type aggrParam struct {
+	GroupBy         []string `json:"groupBy"`
+	Interval        string   `json:"interval"`
+	AggregatedField string   `json:"aggregatedField"`
+}
+
+var cfg config
+
 func main() {
+	cfg = config{}
+	csv := flag.String("csv", "", "specify the csv file as the datasource")
+	dateKey := flag.String("datekey", "Date", "specify the date field/key if using external sources")
+	dateFormat := flag.String("datefmt", "2006-01-02", "specify the date format to parse")
+	flag.Parse()
+	parseConfig(*csv, *dateFormat, *dateKey)
+
 	fmt.Println("Starting HTTP server")
 	flow.Ready()
 
@@ -33,6 +51,19 @@ func main() {
 	}
 
 	fmt.Println("HTTP server has shutdown gracefully")
+}
+
+func parseConfig(csv, dateFmt, dateKey string) {
+	cfg.dateFormat = dateFmt
+	cfg.dateKey = dateKey
+	if csv != "" {
+		if _, err := os.Stat(csv); os.IsNotExist(err) {
+			panic(err)
+		}
+		cfg.src = &csvSource{path: csv}
+	} else {
+		cfg.src = &mockSource{}
+	}
 }
 
 func waitForStopSignal() {
@@ -72,7 +103,7 @@ func aggregateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	aggrOut := aggregate(param.GroupBy, param.Interval)
+	aggrOut := aggregate(param)
 	defer closeFlow()
 
 	results := []map[string]interface{}{}
