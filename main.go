@@ -15,6 +15,7 @@ import (
 
 	"github.com/go-zoo/bone"
 	"github.com/izzulhaziq/glow/flow"
+	"github.com/rs/cors"
 )
 
 type aggrParam struct {
@@ -45,10 +46,11 @@ func waitForStopSignal() {
 func startHTTPServer() *http.Server {
 	mux := bone.New()
 	mux.Post("/aggregate", http.HandlerFunc(aggregateHandler))
+   	handler := cors.Default().Handler(mux)
 
 	srv := &http.Server{
 		Addr:    ":8080",
-		Handler: mux,
+		Handler: handler,
 	}
 
 	go func() {
