@@ -29,18 +29,17 @@ type aggrParam struct {
 var cfg config
 
 func main() {
-	cfg = config{}
 	csv := flag.String("csv", "", "specify the csv file as the datasource")
 	dateKey := flag.String("datekey", "Date", "specify the date field/key if using external sources")
 	dateFormat := flag.String("datefmt", "2006-01-02", "specify the date format to parse")
 	flag.Parse()
-	parseConfig(*csv, *dateFormat, *dateKey)
+	cfg.parse(*csv, *dateFormat, *dateKey)
 
 	fmt.Println("Starting HTTP server")
 	flow.Ready()
 
 	server := startHTTPServer()
-	waitForStopSignal()
+	waitForStop()
 	if err := server.Shutdown(nil); err != nil {
 		panic(err)
 	}
@@ -48,20 +47,21 @@ func main() {
 	fmt.Println("HTTP server has shutdown gracefully")
 }
 
-func parseConfig(csv, dateFmt, dateKey string) {
+func (cfg *config) parse(csv, dateFmt, dateKey string) {
 	cfg.dateFormat = dateFmt
 	cfg.dateKey = dateKey
-	if csv != "" {
-		if _, err := os.Stat(csv); os.IsNotExist(err) {
-			panic(err)
-		}
-		cfg.src = &csvSource{path: csv}
-	} else {
+	if csv == "" {
 		cfg.src = &mockSource{}
+		return
 	}
+
+	if _, err := os.Stat(csv); os.IsNotExist(err) {
+		panic(err)
+	}
+	cfg.src = &csvSource{path: csv}
 }
 
-func waitForStopSignal() {
+func waitForStop() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
 
@@ -70,7 +70,7 @@ func waitForStopSignal() {
 
 func startHTTPServer() *http.Server {
 	mux := bone.New()
-	mux.Post("/aggregate", http.HandlerFunc(aggregateHandler))
+	mux.Post("/aggregate", http.HandlerFunc(errorHandler(aggregateHandler)))
 	handler := cors.Default().Handler(mux)
 
 	srv := &http.Server{
@@ -87,15 +87,14 @@ func startHTTPServer() *http.Server {
 	return srv
 }
 
-func aggregateHandler(w http.ResponseWriter, r *http.Request) {
+func aggregateHandler(w http.ResponseWriter, r *http.Request) (int, error) {
 	decoder := json.NewDecoder(r.Body)
 	defer r.Body.Close()
 
 	var param aggrParam
 	err := decoder.Decode(&param)
 	if err != nil {
-		w.WriteHeader(http.StatusNoContent)
-		return
+		return http.StatusNoContent, err
 	}
 
 	aggrOut := aggregate(param)
@@ -106,16 +105,25 @@ func aggregateHandler(w http.ResponseWriter, r *http.Request) {
 		results = append(results, item)
 	}
 
-	result := map[string]interface{}{}
 	groupByKey := fmt.Sprintf("groupby_%s", param.GroupBy)
-	result[groupByKey] = results
+	result := map[string]interface{}{
+		groupByKey: results,
+	}
 
-	w.Header().Set("content-type", "application/json")
 	encoder := json.NewEncoder(w)
-
 	if err := encoder.Encode(result); err != nil {
-		log.Println("unable to encode result")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return http.StatusInternalServerError, err
+	}
+	return http.StatusOK, nil
+}
+
+func errorHandler(f func(http.ResponseWriter, *http.Request) (int, error)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("content-type", "application/json")
+		code, err := f(w, r)
+		if err != nil {
+			http.Error(w, err.Error(), code)
+			log.Printf("handling %q: %v", r.RequestURI, err)
+		}
 	}
 }

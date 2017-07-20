@@ -45,17 +45,14 @@ func aggregate(param aggrParam) <-chan map[string]interface{} {
 
 func mapToGroup(param aggrParam, data map[string]interface{}) (string, int) {
 	key := getKey(param.GroupBy, param.Interval, data)
-	var val int
 	if param.AggregatedField == "" {
-		val = 1
-	} else {
-		parsed, ok := data[param.AggregatedField].(int)
-		if !ok {
-			parsed, _ = strconv.Atoi(data[param.AggregatedField].(string))
-		}
-		val = parsed
+		return key, 1
 	}
 
+	val, ok := data[param.AggregatedField].(int)
+	if !ok {
+		val, _ = strconv.Atoi(data[param.AggregatedField].(string))
+	}
 	return key, val
 }
 
