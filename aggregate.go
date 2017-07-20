@@ -1,10 +1,9 @@
 package main
 
 import (
+	"strconv"
 	"strings"
 	"time"
-
-	"strconv"
 
 	"github.com/izzulhaziq/glow/flow"
 )
@@ -95,10 +94,8 @@ func fromInterval(t time.Time, interval string) string {
 	switch interval {
 	case "daily":
 		timeKey = t.Format("2006-01-02")
-		//timeKey = fmt.Sprintf("%04d-%02d-%02d", t.Year(), t.Month(), t.Day())
 	case "monthly":
 		timeKey = t.Format("2006-01")
-		//timeKey = fmt.Sprintf("%04d-%02d", t.Year(), t.Month())
 	case "yearly":
 		timeKey = t.Format("2006")
 	}

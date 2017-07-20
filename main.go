@@ -2,17 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
+	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
-
-	"fmt"
-	"time"
-
-	"flag"
 
 	"github.com/go-zoo/bone"
 	"github.com/izzulhaziq/glow/flow"
@@ -47,7 +42,7 @@ func main() {
 	server := startHTTPServer()
 	waitForStopSignal()
 	if err := server.Shutdown(nil); err != nil {
-		panic(err) // failure/timeout shutting down the server gracefully
+		panic(err)
 	}
 
 	fmt.Println("HTTP server has shutdown gracefully")
@@ -123,18 +118,4 @@ func aggregateHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-}
-
-func mockData() (data []map[string]interface{}) {
-	for i := 0; i < 365; i++ {
-		for j := 0; j < 2; j++ {
-			data = append(data, map[string]interface{}{
-				"LicenseId":       "license1",
-				"BilledProductId": "product" + strconv.Itoa(j),
-				"StartDateTime":   time.Now().AddDate(0, 0, -i),
-				"Value":           rand.Intn(100),
-			})
-		}
-	}
-	return
 }
