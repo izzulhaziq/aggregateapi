@@ -28,7 +28,7 @@ func aggregate(param aggrParam) <-chan map[string]interface{} {
 		return flow.KeyValue{Key: k[len(k)-1], Value: v}
 	}).GroupByKey().Map(func(group string, values []map[string]int) map[string]interface{} {
 		flatten := map[string]interface{}{
-			"date": group,
+			"dataKey": group,
 		}
 		for _, item := range values {
 			for k, v := range item {
@@ -73,6 +73,10 @@ func getKey(groupBy []string, interval string, data map[string]interface{}) (key
 			k = "null"
 		}
 		keys = append(keys, k)
+	}
+	if interval == "" {
+		key = strings.Join(keys, ",")
+		return
 	}
 
 	t, ok := data[cfg.dateKey].(time.Time)
