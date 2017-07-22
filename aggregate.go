@@ -32,6 +32,9 @@ func aggregate(param aggrParam) <-chan map[string]interface{} {
 		}
 		for _, item := range values {
 			for k, v := range item {
+				if k == "" {
+					k = "total"
+				}
 				flatten[k] = v
 			}
 		}
@@ -98,5 +101,7 @@ func fromInterval(t time.Time, interval string) string {
 		return t.Format("2006-01")
 	case "yearly":
 		return t.Format("2006")
+	default:
+		return ""
 	}
 }
