@@ -15,6 +15,8 @@ import (
 )
 
 type config struct {
+	shard      int
+	partition  int
 	src        source
 	dateKey    string
 	dateFormat string
@@ -29,12 +31,14 @@ type aggrParam struct {
 var cfg config
 
 func main() {
+	shard := flag.Int("shard", 1, "specify the number of data source shards")
+	partition := flag.Int("partition", 2, "specify the number of partitions before reducing")
 	csv := flag.String("csv", "", "specify the csv file as the datasource")
 	port := flag.Int("port", 8080, "specify port to listen to")
 	dateKey := flag.String("datekey", "Date", "specify the date field/key if using external sources")
 	dateFormat := flag.String("datefmt", "2006-01-02", "specify the date format to parse")
 	flag.Parse()
-	cfg.parse(*csv, *dateFormat, *dateKey)
+	cfg.parse(*shard, *partition, *csv, *dateFormat, *dateKey)
 
 	fmt.Printf("Starting HTTP server on port :%d\n", *port)
 	flow.Ready()
@@ -48,7 +52,9 @@ func main() {
 	fmt.Println("HTTP server has shutdown gracefully")
 }
 
-func (cfg *config) parse(csv, dateFmt, dateKey string) {
+func (cfg *config) parse(shard, partition int, csv, dateFmt, dateKey string) {
+	cfg.shard = shard
+	cfg.partition = partition
 	cfg.dateFormat = dateFmt
 	cfg.dateKey = dateKey
 	if csv == "" {
@@ -98,7 +104,8 @@ func aggregateHandler(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusNoContent, err
 	}
 
-	aggrOut := aggregate(param)
+	aggregator := &aggregator{cfg.src, cfg.shard, cfg.partition}
+	aggrOut := aggregator.aggregate(param)
 	defer closeFlow()
 
 	results := []map[string]interface{}{}

@@ -18,8 +18,6 @@ type csvSource struct {
 	path string
 }
 
-type mockSource struct{}
-
 func (c csvSource) read(out chan map[string]interface{}) error {
 	file, err := os.Open(c.path)
 	if err != nil {
@@ -52,6 +50,8 @@ func (c csvSource) read(out chan map[string]interface{}) error {
 	}
 	return nil
 }
+
+type mockSource struct{}
 
 func (s mockSource) read(out chan map[string]interface{}) error {
 	for i := 0; i < 365; i++ {

@@ -8,16 +8,24 @@ import (
 	"github.com/izzulhaziq/glow/flow"
 )
 
-func aggregate(param aggrParam) <-chan map[string]interface{} {
+type aggregator struct {
+	src       source
+	shard     int
+	partition int
+}
+
+func (aggr *aggregator) aggregate(param aggrParam) <-chan map[string]interface{} {
 	aggrOut := make(chan map[string]interface{})
 	f := flow.New().Source(func(out chan map[string]interface{}) {
-		if err := cfg.src.read(out); err != nil {
+		if err := aggr.src.read(out); err != nil {
 			panic(err)
 		}
-	}, 5).Map(func(data map[string]interface{}) flow.KeyValue {
-		key, val := mapToGroup(param, data)
+	}, aggr.shard).Map(func(data map[string]interface{}) flow.KeyValue {
+		key, val := assignGroup(param, data)
 		return flow.KeyValue{Key: key, Value: val}
-	}).ReduceByKey(func(x int, y int) int {
+	}).Partition(
+		aggr.partition,
+	).ReduceByKey(func(x int, y int) int {
 		return x + y
 	}).Map(func(group string, count int) flow.KeyValue {
 		k := strings.Split(group, ",")
@@ -46,7 +54,7 @@ func aggregate(param aggrParam) <-chan map[string]interface{} {
 	return aggrOut
 }
 
-func mapToGroup(param aggrParam, data map[string]interface{}) (string, int) {
+func assignGroup(param aggrParam, data map[string]interface{}) (string, int) {
 	key := getKey(param.GroupBy, param.Interval, data)
 	if param.AggregatedField == "" {
 		return key, 1
@@ -60,6 +68,7 @@ func mapToGroup(param aggrParam, data map[string]interface{}) (string, int) {
 }
 
 func closeFlow() {
+	flow.Contexts[0].OnInterrupt()
 	copy(flow.Contexts[0:], flow.Contexts[1:])
 	flow.Contexts[len(flow.Contexts)-1] = nil
 	flow.Contexts = flow.Contexts[:len(flow.Contexts)-1]
@@ -104,4 +113,8 @@ func fromInterval(t time.Time, interval string) string {
 	default:
 		return ""
 	}
+}
+
+func filterFunc(data map[string]interface{}) bool {
+	return true
 }
