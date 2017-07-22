@@ -30,15 +30,16 @@ var cfg config
 
 func main() {
 	csv := flag.String("csv", "", "specify the csv file as the datasource")
+	port := flag.Int("port", 8080, "specify port to listen to")
 	dateKey := flag.String("datekey", "Date", "specify the date field/key if using external sources")
 	dateFormat := flag.String("datefmt", "2006-01-02", "specify the date format to parse")
 	flag.Parse()
 	cfg.parse(*csv, *dateFormat, *dateKey)
 
-	fmt.Println("Starting HTTP server")
+	fmt.Printf("Starting HTTP server on port :%d\n", *port)
 	flow.Ready()
 
-	server := startHTTPServer()
+	server := startHTTPServer(*port)
 	waitForStop()
 	if err := server.Shutdown(nil); err != nil {
 		panic(err)
@@ -68,13 +69,13 @@ func waitForStop() {
 	<-stop
 }
 
-func startHTTPServer() *http.Server {
+func startHTTPServer(port int) *http.Server {
 	mux := bone.New()
 	mux.Post("/aggregate", http.HandlerFunc(errorHandler(aggregateHandler)))
 	handler := cors.Default().Handler(mux)
 
 	srv := &http.Server{
-		Addr:    ":8080",
+		Addr:    fmt.Sprintf(":%d", port),
 		Handler: handler,
 	}
 
