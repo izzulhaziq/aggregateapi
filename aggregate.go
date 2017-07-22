@@ -91,14 +91,12 @@ func getKey(groupBy []string, interval string, data map[string]interface{}) (key
 }
 
 func fromInterval(t time.Time, interval string) string {
-	var timeKey string
 	switch interval {
 	case "daily":
-		timeKey = t.Format("2006-01-02")
+		return t.Format("2006-01-02")
 	case "monthly":
-		timeKey = t.Format("2006-01")
+		return t.Format("2006-01")
 	case "yearly":
-		timeKey = t.Format("2006")
+		return t.Format("2006")
 	}
-	return timeKey
 }
