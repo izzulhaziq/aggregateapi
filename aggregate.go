@@ -68,7 +68,6 @@ func assignGroup(param aggrParam, data map[string]interface{}) (string, int) {
 }
 
 func closeFlow() {
-	flow.Contexts[0].OnInterrupt()
 	copy(flow.Contexts[0:], flow.Contexts[1:])
 	flow.Contexts[len(flow.Contexts)-1] = nil
 	flow.Contexts = flow.Contexts[:len(flow.Contexts)-1]
