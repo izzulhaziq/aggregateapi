@@ -17,6 +17,7 @@ import (
 type config struct {
 	shard      int
 	partition  int
+	concurRead int
 	src        source
 	dateKey    string
 	dateFormat string
@@ -33,12 +34,13 @@ var cfg config
 func main() {
 	shard := flag.Int("shard", 1, "specify the number of data source shards")
 	partition := flag.Int("partition", 2, "specify the number of partitions before reducing")
+	concurRead := flag.Int("concurread", 2, "specify no of concurrent read from source, if supported")
 	csv := flag.String("csv", "", "specify the csv file as the datasource")
 	port := flag.Int("port", 8080, "specify port to listen to")
 	dateKey := flag.String("datekey", "Date", "specify the date field/key if using external sources")
 	dateFormat := flag.String("datefmt", "2006-01-02", "specify the date format to parse")
 	flag.Parse()
-	cfg.parse(*shard, *partition, *csv, *dateFormat, *dateKey)
+	cfg.parse(*shard, *partition, *concurRead, *csv, *dateFormat, *dateKey)
 
 	fmt.Printf("Starting HTTP server on port :%d\n", *port)
 	flow.Ready()
@@ -52,7 +54,8 @@ func main() {
 	fmt.Println("HTTP server has shutdown gracefully")
 }
 
-func (cfg *config) parse(shard, partition int, csv, dateFmt, dateKey string) {
+func (cfg *config) parse(shard, partition, concurRead int, csv, dateFmt, dateKey string) {
+	cfg.concurRead = concurRead
 	cfg.shard = shard
 	cfg.partition = partition
 	cfg.dateFormat = dateFmt
