@@ -5,7 +5,9 @@ import (
 	"time"
 )
 
-type mockSrc struct{}
+type mockSrc struct {
+	count int
+}
 
 func (src mockSrc) read(out chan map[string]interface{}) error {
 	for i := 0; i < 5; i++ {
@@ -21,7 +23,7 @@ func (src mockSrc) read(out chan map[string]interface{}) error {
 }
 
 func TestAggregateByLicense(t *testing.T) {
-	target := &aggregator{&mockSrc{}, 1, 1, time.RFC3339, "Date"}
+	target := &aggregator{&mockSrc{5}, 1, 1, time.RFC3339, "Date"}
 	param := aggrParam{
 		GroupBy:         []string{"LicenseId"},
 		Interval:        "daily",
@@ -49,7 +51,7 @@ func TestAggregateByLicense(t *testing.T) {
 }
 
 func TestAggregateByProduct(t *testing.T) {
-	target := &aggregator{&mockSrc{}, 1, 1, time.RFC3339, "Date"}
+	target := &aggregator{&mockSrc{5}, 1, 1, time.RFC3339, "Date"}
 	param := aggrParam{
 		GroupBy:         []string{"LicenseId", "BilledProductId"},
 		Interval:        "monthly",
@@ -72,4 +74,22 @@ func TestAggregateByProduct(t *testing.T) {
 	} else {
 		t.Errorf("aggregate group is not as expected, expect license1 get keys %v", results[0])
 	}
+}
+
+var benchRes []map[string]interface{}
+
+func BenchmarkAggregate(b *testing.B) {
+	target := &aggregator{&mockSrc{1000000000}, 1, 1, time.RFC3339, "Date"}
+	param := aggrParam{
+		GroupBy:         []string{"LicenseId"},
+		Interval:        "daily",
+		AggregatedField: "Value",
+	}
+	var results []map[string]interface{}
+	for n := 0; n < b.N; n++ {
+		for r := range target.Aggregate(param) {
+			results = append(results, r)
+		}
+	}
+	benchRes = results
 }
