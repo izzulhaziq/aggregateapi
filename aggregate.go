@@ -12,16 +12,18 @@ type aggregator struct {
 	src       source
 	shard     int
 	partition int
+	dateFmt   string
+	dateKey   string
 }
 
-func (aggr *aggregator) aggregate(param aggrParam) <-chan map[string]interface{} {
+func (aggr *aggregator) Aggregate(param aggrParam) <-chan map[string]interface{} {
 	aggrOut := make(chan map[string]interface{})
 	f := flow.New().Source(func(out chan map[string]interface{}) {
 		if err := aggr.src.read(out); err != nil {
 			panic(err)
 		}
 	}, aggr.shard).Map(func(data map[string]interface{}) flow.KeyValue {
-		key, val := assignGroup(param, data)
+		key, val := aggr.assignGroup(param, data)
 		return flow.KeyValue{Key: key, Value: val}
 	}).Partition(
 		aggr.partition,
@@ -54,8 +56,8 @@ func (aggr *aggregator) aggregate(param aggrParam) <-chan map[string]interface{}
 	return aggrOut
 }
 
-func assignGroup(param aggrParam, data map[string]interface{}) (string, int) {
-	key := getKey(param.GroupBy, param.Interval, data)
+func (aggr *aggregator) assignGroup(param aggrParam, data map[string]interface{}) (string, int) {
+	key := aggr.getKey(param.GroupBy, param.Interval, data)
 	if param.AggregatedField == "" {
 		return key, 1
 	}
@@ -67,13 +69,7 @@ func assignGroup(param aggrParam, data map[string]interface{}) (string, int) {
 	return key, val
 }
 
-func closeFlow() {
-	copy(flow.Contexts[0:], flow.Contexts[1:])
-	flow.Contexts[len(flow.Contexts)-1] = nil
-	flow.Contexts = flow.Contexts[:len(flow.Contexts)-1]
-}
-
-func getKey(groupBy []string, interval string, data map[string]interface{}) (key string) {
+func (aggr *aggregator) getKey(groupBy []string, interval string, data map[string]interface{}) (key string) {
 	var keys []string
 	for _, g := range groupBy {
 		k, ok := data[g].(string)
@@ -87,9 +83,9 @@ func getKey(groupBy []string, interval string, data map[string]interface{}) (key
 		return
 	}
 
-	t, ok := data[cfg.dateKey].(time.Time)
+	t, ok := data[aggr.dateKey].(time.Time)
 	if !ok {
-		parsed, err := time.Parse(cfg.dateFormat, data[cfg.dateKey].(string))
+		parsed, err := time.Parse(aggr.dateFmt, data[aggr.dateKey].(string))
 		if err != nil {
 			panic(err)
 		}
@@ -112,6 +108,12 @@ func fromInterval(t time.Time, interval string) string {
 	default:
 		return ""
 	}
+}
+
+func closeFlow() {
+	copy(flow.Contexts[0:], flow.Contexts[1:])
+	flow.Contexts[len(flow.Contexts)-1] = nil
+	flow.Contexts = flow.Contexts[:len(flow.Contexts)-1]
 }
 
 func filterFunc(data map[string]interface{}) bool {

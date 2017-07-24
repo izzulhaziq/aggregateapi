@@ -104,8 +104,8 @@ func aggregateHandler(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusNoContent, err
 	}
 
-	aggregator := &aggregator{cfg.src, cfg.shard, cfg.partition}
-	aggrOut := aggregator.aggregate(param)
+	aggregator := &aggregator{cfg.src, cfg.shard, cfg.partition, cfg.dateFormat, cfg.dateKey}
+	aggrOut := aggregator.Aggregate(param)
 	defer closeFlow()
 
 	results := []map[string]interface{}{}
