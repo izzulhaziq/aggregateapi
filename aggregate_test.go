@@ -10,7 +10,7 @@ type mockSrc struct {
 }
 
 func (src mockSrc) read(out chan map[string]interface{}) error {
-	for i := 0; i < 5; i++ {
+	for i := 0; i < src.count; i++ {
 		rec := map[string]interface{}{
 			"LicenseId":       "license1",
 			"BilledProductId": "product1",
@@ -78,8 +78,9 @@ func TestAggregateByProduct(t *testing.T) {
 
 var benchRes []map[string]interface{}
 
-func BenchmarkAggregate(b *testing.B) {
-	target := &aggregator{&mockSrc{1000000000}, 1, 1, time.RFC3339, "Date"}
+func benchmarkAggregate(i int, b *testing.B) {
+	b.ReportAllocs()
+	target := &aggregator{&mockSrc{i}, 1, 1, time.RFC3339, "Date"}
 	param := aggrParam{
 		GroupBy:         []string{"LicenseId"},
 		Interval:        "daily",
@@ -93,3 +94,6 @@ func BenchmarkAggregate(b *testing.B) {
 	}
 	benchRes = results
 }
+
+func BenchmarkAggregate1000(b *testing.B)  { benchmarkAggregate(1000, b) }
+func BenchmarkAggregate10000(b *testing.B) { benchmarkAggregate(10000, b) }
