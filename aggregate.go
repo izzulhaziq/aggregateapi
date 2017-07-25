@@ -9,17 +9,26 @@ import (
 )
 
 type aggregator struct {
-	src       source
+	src       Source
 	shard     int
 	partition int
 	dateFmt   string
 	dateKey   string
 }
 
+// Aggregate aggregates the data from the src based on the param aggrParam values
 func (aggr *aggregator) Aggregate(param aggrParam) <-chan map[string]interface{} {
 	aggrOut := make(chan map[string]interface{})
 	f := flow.New().Source(func(out chan map[string]interface{}) {
-		if err := aggr.src.read(out); err != nil {
+		var selFields []string
+		selFields = append(selFields, param.GroupBy...)
+		if param.Interval != "" {
+			selFields = append(selFields, aggr.dateKey)
+		}
+		if param.AggregatedField != "" {
+			selFields = append(selFields, param.AggregatedField)
+		}
+		if err := aggr.src.Read(selFields, out); err != nil {
 			panic(err)
 		}
 	}, aggr.shard).Map(func(data map[string]interface{}) flow.KeyValue {

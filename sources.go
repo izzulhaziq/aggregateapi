@@ -10,15 +10,17 @@ import (
 	"github.com/gwenn/yacr"
 )
 
-type source interface {
-	read(chan map[string]interface{}) error
+// Source is the interface that wraps the source of aggregation that will Read
+// data based on the specified fields []string into the channel map[string]interface{}.
+type Source interface {
+	Read([]string, chan map[string]interface{}) error
 }
 
 type csvSource struct {
 	path string
 }
 
-func (c csvSource) read(out chan map[string]interface{}) error {
+func (c csvSource) Read(fields []string, out chan map[string]interface{}) error {
 	file, err := os.Open(c.path)
 	if err != nil {
 		err = fmt.Errorf("unable to open csv file %s, %v", c.path, err)
@@ -38,7 +40,9 @@ func (c csvSource) read(out chan map[string]interface{}) error {
 				lineCount++
 			}
 		} else {
-			record[headers[i]] = reader.Text()
+			if fieldsContain(fields, headers[i]) {
+				record[headers[i]] = reader.Text()
+			}
 			i++
 
 			if reader.EndOfRecord() {
@@ -52,9 +56,18 @@ func (c csvSource) read(out chan map[string]interface{}) error {
 	return nil
 }
 
+func fieldsContain(fields []string, header string) bool {
+	for i := 0; i < len(fields); i++ {
+		if fields[i] == header {
+			return true
+		}
+	}
+	return false
+}
+
 type mockSource struct{}
 
-func (s mockSource) read(out chan map[string]interface{}) error {
+func (s mockSource) Read(fields []string, out chan map[string]interface{}) error {
 	for i := 0; i < 365; i++ {
 		for j := 0; j < 2; j++ {
 			out <- map[string]interface{}{

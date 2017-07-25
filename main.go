@@ -17,7 +17,7 @@ import (
 type config struct {
 	shard      int
 	partition  int
-	src        source
+	src        Source
 	dateKey    string
 	dateFormat string
 }
