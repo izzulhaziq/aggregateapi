@@ -9,7 +9,7 @@ type mockSrc struct {
 	count int
 }
 
-func (src mockSrc) Read(fields []string, out chan map[string]interface{}) error {
+func (src mockSrc) Read(f fields, out chan map[string]interface{}) error {
 	for i := 0; i < src.count; i++ {
 		rec := map[string]interface{}{
 			"LicenseId":       "license1",

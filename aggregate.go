@@ -20,7 +20,7 @@ type aggregator struct {
 func (aggr *aggregator) Aggregate(param aggrParam) <-chan map[string]interface{} {
 	aggrOut := make(chan map[string]interface{})
 	f := flow.New().Source(func(out chan map[string]interface{}) {
-		var selFields []string
+		var selFields fields
 		selFields = append(selFields, param.GroupBy...)
 		if param.Interval != "" {
 			selFields = append(selFields, aggr.dateKey)
