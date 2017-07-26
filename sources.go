@@ -22,7 +22,7 @@ type csvSource struct {
 	path string
 }
 
-func (c csvSource) Read(flds fields, out chan map[string]interface{}) error {
+func (c *csvSource) Read(flds fields, out chan map[string]interface{}) error {
 	file, err := os.Open(c.path)
 	if err != nil {
 		err = fmt.Errorf("unable to open csv file %s, %v", c.path, err)
@@ -58,7 +58,7 @@ func (c csvSource) Read(flds fields, out chan map[string]interface{}) error {
 	return nil
 }
 
-func (f fields) contain(header string) bool {
+func (f *fields) contain(header string) bool {
 	for i := 0; i < len(f); i++ {
 		if f[i] == header {
 			return true
@@ -69,7 +69,7 @@ func (f fields) contain(header string) bool {
 
 type mockSource struct{}
 
-func (s mockSource) Read(f fields, out chan map[string]interface{}) error {
+func (s *mockSource) Read(f fields, out chan map[string]interface{}) error {
 	for i := 0; i < 365; i++ {
 		for j := 0; j < 2; j++ {
 			out <- map[string]interface{}{
