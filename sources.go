@@ -58,7 +58,7 @@ func (c *csvSource) Read(flds fields, out chan map[string]interface{}) error {
 	return nil
 }
 
-func (f *fields) contain(header string) bool {
+func (f fields) contain(header string) bool {
 	for i := 0; i < len(f); i++ {
 		if f[i] == header {
 			return true

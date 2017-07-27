@@ -19,50 +19,49 @@ type aggregator struct {
 // Aggregate aggregates the data from the src based on the param aggrParam values
 func (aggr *aggregator) Aggregate(param aggrParam) <-chan map[string]interface{} {
 	aggrOut := make(chan map[string]interface{})
-	f := flow.New().Source(func(out chan map[string]interface{}) {
-		var selFields fields
-		selFields = append(selFields, param.GroupBy...)
-		if param.Interval != "" {
-			selFields = append(selFields, aggr.dateKey)
-		}
-		if param.AggregatedField != "" {
-			selFields = append(selFields, param.AggregatedField)
-		}
-		if err := aggr.src.Read(selFields, out); err != nil {
-			panic(err)
-		}
-	}, aggr.shard).Map(func(data map[string]interface{}) flow.KeyValue {
-		key, val := aggr.assignGroup(param, data)
-		return flow.KeyValue{Key: key, Value: val}
-	}).Partition(
-		aggr.partition,
-	).ReduceByKey(func(x int, y int) int {
-		return x + y
-	}).Map(func(group string, count int) flow.KeyValue {
-		k := strings.Split(group, ",")
-		v := map[string]int{
-			strings.Join(k[:len(k)-1], ","): count,
-		}
-		// key = date, value = [group]
-		return flow.KeyValue{Key: k[len(k)-1], Value: v}
-	}).GroupByKey().Map(func(group string, values []map[string]int) map[string]interface{} {
-		flatten := map[string]interface{}{
-			"dataKey": group,
-		}
-		for _, item := range values {
-			for k, v := range item {
-				if k == "" {
-					k = "total"
-				}
-				flatten[k] = v
+	f := flow.New().
+		Source(func(out chan map[string]interface{}) {
+			if err := aggr.src.Read(aggr.getSelectedFields(param), out); err != nil {
+				panic(err)
 			}
-		}
-		// { date, group1, group2, ... }
-		return flatten
-	}).AddOutput(aggrOut)
+		}, aggr.shard).
+		Map(func(data map[string]interface{}) flow.KeyValue {
+			key, val := aggr.assignGroup(param, data)
+			return flow.KeyValue{Key: key, Value: val}
+		}).
+		Partition(
+			aggr.partition,
+		).
+		ReduceByKey(func(x int, y int) int {
+			return x + y
+		}).
+		Map(func(group string, count int) flow.KeyValue {
+			k := strings.Split(group, ",")
+			v := map[string]int{
+				strings.Join(k[:len(k)-1], ","): count,
+			}
+			// key = date, value = [group]
+			return flow.KeyValue{Key: k[len(k)-1], Value: v}
+		}).
+		GroupByKey().
+		Map(func(group string, values []map[string]int) map[string]interface{} {
+			// { date, group1, group2, ... }
+			return aggr.flattenResult(group, values)
+		}).AddOutput(aggrOut)
 
 	go f.Run()
 	return aggrOut
+}
+
+func (aggr *aggregator) getSelectedFields(param aggrParam) (selFields fields) {
+	selFields = append(selFields, param.GroupBy...)
+	if param.Interval != "" {
+		selFields = append(selFields, aggr.dateKey)
+	}
+	if param.AggregatedField != "" {
+		selFields = append(selFields, param.AggregatedField)
+	}
+	return selFields
 }
 
 func (aggr *aggregator) assignGroup(param aggrParam, data map[string]interface{}) (string, int) {
@@ -101,12 +100,31 @@ func (aggr *aggregator) getKey(groupBy []string, interval string, data map[strin
 		t = parsed
 	}
 
-	keys = append(keys, fromInterval(t, interval))
+	keys = append(keys, timeKey{t}.from(interval))
 	key = strings.Join(keys, ",")
 	return
 }
 
-func fromInterval(t time.Time, interval string) string {
+func (aggr *aggregator) flattenResult(dataKey string, values []map[string]int) map[string]interface{} {
+	flatten := map[string]interface{}{
+		"dataKey": dataKey,
+	}
+	for _, item := range values {
+		for k, v := range item {
+			if k == "" {
+				k = "total"
+			}
+			flatten[k] = v
+		}
+	}
+	return flatten
+}
+
+type timeKey struct {
+	time.Time
+}
+
+func (t timeKey) from(interval string) string {
 	switch interval {
 	case "daily":
 		return t.Format("2006-01-02")
