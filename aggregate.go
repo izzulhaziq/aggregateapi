@@ -21,7 +21,8 @@ func (aggr *aggregator) Aggregate(param aggrParam) <-chan map[string]interface{}
 	aggrOut := make(chan map[string]interface{})
 	f := flow.New().
 		Source(func(out chan map[string]interface{}) {
-			if err := aggr.src.Read(aggr.getSelectedFields(param), out); err != nil {
+			err := aggr.src.Read(param.Query, aggr.getSelectedFields(param), out)
+			if err != nil {
 				panic(err)
 			}
 		}, aggr.shard).

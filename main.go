@@ -23,6 +23,7 @@ type config struct {
 }
 
 type aggrParam struct {
+	Query           string   `json:"query"`
 	GroupBy         []string `json:"groupBy"`
 	Interval        string   `json:"interval"`
 	AggregatedField string   `json:"aggregatedField"`
@@ -30,15 +31,24 @@ type aggrParam struct {
 
 var cfg config
 
+var (
+	port        = flag.Int("port", 8080, "specify port to listen to")
+	shard       = flag.Int("shard", 1, "specify the number of data source shards")
+	partition   = flag.Int("partition", 2, "specify the number of partitions before reducing")
+	dateKey     = flag.String("datekey", "Date", "specify the date field/key if using external sources")
+	dateFormat  = flag.String("datefmt", "2006-01-02", "specify the date format to parse")
+	srcType     = flag.String("source", "mock", "the data source to use")
+	csv         = flag.String("csv", "", "specify the csv file as the datasource")
+	sqlhost     = flag.String("sqlhost", "localhost", "the sql server hostname")
+	sqlport     = flag.Int("sqlport", 1433, "sql server port number")
+	sqlusername = flag.String("sqlusername", "sa", "sql server username")
+	sqlpassword = flag.String("sqlpassword", "password", "sql server password")
+)
+
 func main() {
-	shard := flag.Int("shard", 1, "specify the number of data source shards")
-	partition := flag.Int("partition", 2, "specify the number of partitions before reducing")
-	csv := flag.String("csv", "", "specify the csv file as the datasource")
-	port := flag.Int("port", 8080, "specify port to listen to")
-	dateKey := flag.String("datekey", "Date", "specify the date field/key if using external sources")
-	dateFormat := flag.String("datefmt", "2006-01-02", "specify the date format to parse")
 	flag.Parse()
-	cfg.parse(*shard, *partition, *csv, *dateFormat, *dateKey)
+	cfg.parse(*shard, *partition, *dateFormat, *dateKey)
+	cfg.configureSrc(*srcType, *csv, *sqlhost, *sqlusername, *sqlpassword, *sqlport)
 
 	fmt.Printf("Starting HTTP server on port :%d\n", *port)
 	flow.Ready()
@@ -52,20 +62,30 @@ func main() {
 	fmt.Println("HTTP server has shutdown gracefully")
 }
 
-func (cfg *config) parse(shard, partition int, csv, dateFmt, dateKey string) {
+func (cfg *config) parse(shard, partition int, dateFmt, dateKey string) {
 	cfg.shard = shard
 	cfg.partition = partition
 	cfg.dateFormat = dateFmt
 	cfg.dateKey = dateKey
-	if csv == "" {
-		cfg.src = &mockSource{}
-		return
-	}
+}
 
-	if _, err := os.Stat(csv); os.IsNotExist(err) {
-		panic(err)
+func (cfg *config) configureSrc(srcType, csv, sqlhost, sqlusername, sqlpassword string, sqlport int) {
+	switch srcType {
+	case "mock":
+		cfg.src = &mockSource{}
+	case "csv":
+		if _, err := os.Stat(csv); os.IsNotExist(err) {
+			panic(err)
+		}
+		cfg.src = &csvSource{csv}
+	case "sql":
+		cfg.src = &sqlSource{
+			sqlusername,
+			sqlpassword,
+			sqlhost,
+			sqlport,
+		}
 	}
-	cfg.src = &csvSource{path: csv}
 }
 
 func waitForStop() {
