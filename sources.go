@@ -16,8 +16,6 @@ type Source interface {
 	Read(fields, chan map[string]interface{}) error
 }
 
-type fields []string
-
 type csvSource struct {
 	path string
 }
@@ -57,6 +55,8 @@ func (c *csvSource) Read(flds fields, out chan map[string]interface{}) error {
 	}
 	return nil
 }
+
+type fields []string
 
 func (f fields) contain(header string) bool {
 	for i := 0; i < len(f); i++ {
