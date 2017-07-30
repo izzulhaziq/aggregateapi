@@ -137,7 +137,7 @@ func (s *sqlSource) Read(q string, f fields, out chan map[string]interface{}) er
 			return err
 		}
 		var value string
-		var record map[string]interface{}
+		record := map[string]interface{}{}
 		for i, col := range values {
 			if f.contain(columns[i]) {
 				if col == nil {
