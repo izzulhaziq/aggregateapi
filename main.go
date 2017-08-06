@@ -41,8 +41,7 @@ func main() {
 	// If 1st arg is .yaml file, use it as config file.
 	if _, err := os.Stat(os.Args[1]); os.IsNotExist(err) {
 		flag.Parse()
-		cfg.parse(*shard, *partition, *dateFormat, *dateKey)
-		cfg.configureSrc(*srcType, *csv, *sqlhost, *sqlusername, *sqlpassword, *sqlport)
+		cfg.parseFlag()
 	} else {
 		cfg.parseYaml(os.Args[1])
 	}

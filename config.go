@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 
@@ -57,6 +56,14 @@ func (cfg *config) parseYaml(yamlPath string) {
 		cfgFile.SQLCfg.Username, cfgFile.SQLCfg.Password, cfgFile.SQLCfg.Port)
 }
 
+func (cfg *config) parseFlag() {
+	cfg.shard = *shard
+	cfg.partition = *partition
+	cfg.dateFormat = *dateFormat
+	cfg.dateKey = *dateKey
+	cfg.configureSrc(*srcType, *csv, *sqlhost, *sqlusername, *sqlpassword, *sqlport)
+}
+
 func (cfg *config) parse(shard, partition int, dateFmt, dateKey string) {
 	cfg.shard = shard
 	cfg.partition = partition
@@ -73,7 +80,6 @@ func (cfg *config) configureSrc(srcType, csv, sqlhost, sqlusername, sqlpassword 
 			panic(err)
 		}
 		cfg.src = &csvSource{csv}
-		fmt.Println(cfg.src)
 	case "sql":
 		cfg.src = &sqlSource{
 			sqlusername,
