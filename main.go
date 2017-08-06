@@ -14,14 +14,6 @@ import (
 	"github.com/rs/cors"
 )
 
-type config struct {
-	shard      int
-	partition  int
-	src        Source
-	dateKey    string
-	dateFormat string
-}
-
 type aggrParam struct {
 	Query           string   `json:"query"`
 	GroupBy         []string `json:"groupBy"`
@@ -46,9 +38,14 @@ var (
 )
 
 func main() {
-	flag.Parse()
-	cfg.parse(*shard, *partition, *dateFormat, *dateKey)
-	cfg.configureSrc(*srcType, *csv, *sqlhost, *sqlusername, *sqlpassword, *sqlport)
+	// If 1st arg is .yaml file, use it as config file.
+	if _, err := os.Stat(os.Args[1]); os.IsNotExist(err) {
+		flag.Parse()
+		cfg.parse(*shard, *partition, *dateFormat, *dateKey)
+		cfg.configureSrc(*srcType, *csv, *sqlhost, *sqlusername, *sqlpassword, *sqlport)
+	} else {
+		cfg.parseYaml(os.Args[1])
+	}
 
 	fmt.Printf("Starting HTTP server on port :%d\n", *port)
 	flow.Ready()
@@ -60,32 +57,6 @@ func main() {
 	}
 
 	fmt.Println("HTTP server has shutdown gracefully")
-}
-
-func (cfg *config) parse(shard, partition int, dateFmt, dateKey string) {
-	cfg.shard = shard
-	cfg.partition = partition
-	cfg.dateFormat = dateFmt
-	cfg.dateKey = dateKey
-}
-
-func (cfg *config) configureSrc(srcType, csv, sqlhost, sqlusername, sqlpassword string, sqlport int) {
-	switch srcType {
-	case "mock":
-		cfg.src = &mockSource{}
-	case "csv":
-		if _, err := os.Stat(csv); os.IsNotExist(err) {
-			panic(err)
-		}
-		cfg.src = &csvSource{csv}
-	case "sql":
-		cfg.src = &sqlSource{
-			sqlusername,
-			sqlpassword,
-			sqlhost,
-			sqlport,
-		}
-	}
 }
 
 func waitForStop() {

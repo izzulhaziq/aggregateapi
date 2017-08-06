@@ -1,0 +1,7 @@
+shard: 1
+partition: 5
+dateField: FullDate
+dateFormat: 1/2/2006
+source: csv
+csv: 
+  path: /Users/izzulhaziq/Downloads/sample.csv
